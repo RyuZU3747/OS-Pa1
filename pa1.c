@@ -50,7 +50,6 @@ int run_command(int nr_tokens, char *tokens[])
  */
 int initialize(int argc, char * const argv[])
 {
-	//테스트에용
 	return 0;
 }
 
