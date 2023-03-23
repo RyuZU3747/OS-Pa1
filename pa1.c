@@ -15,6 +15,9 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 /***********************************************************************
  * run_command()
@@ -32,6 +35,22 @@ int run_command(int nr_tokens, char *tokens[])
 {
 	if (strcmp(tokens[0], "exit") == 0) return 0;
 
+	if (strcmp(tokens[0], "cd") == 0){
+		chdir(tokens[1]);
+		return 1;
+	}
+
+
+	pid_t pid = fork();
+	if(pid==0){
+		execvp(tokens[0], tokens);
+		exit(-1);
+	}
+	else{
+		int ret;
+		wait(&ret);
+		if(WEXITSTATUS(ret) == 0) return 1;
+	}
 	fprintf(stderr, "Unable to execute %s\n", tokens[0]);
 	return 1;
 }
@@ -50,7 +69,6 @@ int run_command(int nr_tokens, char *tokens[])
  */
 int initialize(int argc, char * const argv[])
 {
-	//테스트에용
 	return 0;
 }
 
@@ -65,3 +83,4 @@ int initialize(int argc, char * const argv[])
 void finalize(int argc, char * const argv[])
 {
 }
+
