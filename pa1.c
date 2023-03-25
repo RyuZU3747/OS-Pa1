@@ -36,10 +36,12 @@ int run_command(int nr_tokens, char *tokens[])
 	if (strcmp(tokens[0], "exit") == 0) return 0;
 
 	if (strcmp(tokens[0], "cd") == 0){
-		chdir(tokens[1]);
+		if(tokens[1]==NULL||strcmp(tokens[1], "~")==0){
+			chdir(getenv("HOME"));
+		}
+		else chdir(tokens[1]);
 		return 1;
 	}
-
 
 	pid_t pid = fork();
 	if(pid==0){
