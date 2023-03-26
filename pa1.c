@@ -35,17 +35,48 @@ int run_command(int nr_tokens, char *tokens[])
 {
 	if (strcmp(tokens[0], "exit") == 0) return 0;
 
-	if (strcmp(tokens[0], "cd") == 0){
-		if(tokens[1]==NULL||strcmp(tokens[1], "~")==0){
+	if(strcmp(tokens[0], "alias") == 0){
+		if(tokens[1]==NULL);
+		else{
+			char tmp[4096] = { '\0' };
+			strcat(tmp, tokens[2]);
+			for(int i=3;i<nr_tokens;i++){
+				strcat(tmp, " ");
+				strcat(tmp, tokens[i]);
+			}
+			strcat(tmp, "\0");
+			setenv(tokens[1], tmp, 0);
+		}
+		return 1;
+	}
+
+	char tmp[4096] = { '\0' };
+	for(int i=0;i<nr_tokens;i++){
+		if(getenv(tokens[i])!=NULL) strcat(tmp, getenv(tokens[i]));
+		else strcat(tmp, tokens[i]);
+		strcat(tmp, " ");
+	}
+
+	char *cmd = strtok(tmp, " ");
+	char *arg[32] = { NULL };
+	int idx = 0;
+	arg[idx++] = strdup(cmd);
+	while((cmd = strtok(NULL, " "))){
+		arg[idx++] = strdup(cmd);
+	}
+	arg[idx] = NULL;
+
+	if (strcmp(arg[0], "cd") == 0){
+		if(arg[1]==NULL||strcmp(arg[1], "~")==0){
 			chdir(getenv("HOME"));
 		}
-		else chdir(tokens[1]);
+		else chdir(arg[1]);
 		return 1;
 	}
 
 	pid_t pid = fork();
 	if(pid==0){
-		execvp(tokens[0], tokens);
+		execvp(arg[0], arg);
 		exit(-1);
 	}
 	else{
@@ -53,7 +84,11 @@ int run_command(int nr_tokens, char *tokens[])
 		wait(&ret);
 		if(WEXITSTATUS(ret) == 0) return 1;
 	}
-	fprintf(stderr, "Unable to execute %s\n", tokens[0]);
+
+	fprintf(stderr, "Unable to execute %s\n", arg[0]);
+	for (int i=0;i<idx;i++) {
+		free(arg[i]);
+	}
 	return 1;
 }
 
