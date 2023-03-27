@@ -33,11 +33,17 @@
  */
 int run_command(int nr_tokens, char *tokens[])
 {
+	static char aliaslist[32][128]; 
+	static int aliascnt = 0;
 	if (strcmp(tokens[0], "exit") == 0) return 0;
 
 	if(strcmp(tokens[0], "alias") == 0){
-		if(tokens[1]==NULL);
+		if(tokens[1]==NULL){
+			for(int i=0;i<aliascnt;i++) fprintf(stderr, "%s: %s\n", aliaslist[i], getenv(aliaslist[i]));
+		}
 		else{
+			strcpy(aliaslist[aliascnt++],tokens[1]);
+
 			char tmp[4096] = { '\0' };
 			strcat(tmp, tokens[2]);
 			for(int i=3;i<nr_tokens;i++){
