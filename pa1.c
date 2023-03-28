@@ -35,6 +35,7 @@ int run_command(int nr_tokens, char *tokens[])
 {
 	static char aliaslist[32][128]; 
 	static int aliascnt = 0;
+	int ispipe = 0;
 	if (strcmp(tokens[0], "exit") == 0) return 0;
 
 	if(strcmp(tokens[0], "alias") == 0){
@@ -64,36 +65,82 @@ int run_command(int nr_tokens, char *tokens[])
 	}
 
 	char *cmd = strtok(tmp, " ");
-	char *arg[32] = { NULL };
-	int idx = 0;
-	arg[idx++] = strdup(cmd);
+	char *arg1[32] = { NULL };
+	char *arg2[32] = { NULL };
+	int idx1 = 0;
+	int idx2 = 0;
+	arg1[idx1++] = strdup(cmd);
 	while((cmd = strtok(NULL, " "))){
-		arg[idx++] = strdup(cmd);
-	}
-	arg[idx] = NULL;
-
-	if (strcmp(arg[0], "cd") == 0){
-		if(arg[1]==NULL||strcmp(arg[1], "~")==0){
-			chdir(getenv("HOME"));
+		if(strcmp(cmd, "|")==0){
+			ispipe = 1;
+			continue;
 		}
-		else chdir(arg[1]);
-		return 1;
+		if(ispipe) arg2[idx2++] = strdup(cmd);
+		else arg1[idx1++] = strdup(cmd);
 	}
+	arg1[idx1] = NULL;
+	arg2[idx2] = NULL;
 
-	pid_t pid = fork();
-	if(pid==0){
-		execvp(arg[0], arg);
-		exit(-1);
+	if(ispipe){
+		int pipefd[2];
+		pipe(pipefd);
+
+		pid_t pid = fork();
+		if(pid==0){
+			close(pipefd[1]);
+			dup2(pipefd[0], STDIN_FILENO);
+			close(pipefd[0]);
+			execvp(arg2[0], arg2);
+			exit(-1);
+		}
+		else{
+			pid_t ppid = fork();
+			if(ppid==0){
+				close(pipefd[0]);
+				dup2(pipefd[1], STDOUT_FILENO);
+				close(pipefd[1]);
+				execvp(arg1[0], arg1);
+				exit(-1);
+			}
+			else{
+				close(pipefd[1]);
+				close(pipefd[0]);
+				int ret;
+				wait(&ret);
+				if(WEXITSTATUS(ret) == 0) return 1;
+			}
+			int ret;
+			wait(&ret);
+			if(WEXITSTATUS(ret) == 0) return 1;
+		}
 	}
 	else{
-		int ret;
-		wait(&ret);
-		if(WEXITSTATUS(ret) == 0) return 1;
+		if (strcmp(arg1[0], "cd") == 0){
+			if(arg1[1]==NULL||strcmp(arg1[1], "~")==0){
+				chdir(getenv("HOME"));
+			}
+			else chdir(arg1[1]);
+			return 1;
+		}
+
+		pid_t pid = fork();
+		if(pid==0){
+			execvp(arg1[0], arg1);
+			exit(-1);
+		}
+		else{
+			int ret;
+			wait(&ret);
+			if(WEXITSTATUS(ret) == 0) return 1;
+		}
 	}
 
-	fprintf(stderr, "Unable to execute %s\n", arg[0]);
-	for (int i=0;i<idx;i++) {
-		free(arg[i]);
+	fprintf(stderr, "Unable to execute %s\n", arg1[0]);
+	for (int i=0;i<idx1;i++) {
+		free(arg1[i]);
+	}
+	for (int i=0;i<idx2;i++) {
+		free(arg2[i]);
 	}
 	return 1;
 }
